@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: frkk-react-app
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      # Монтируем исходный код для hot-reload
+      - ./src:/app/src
+      - ./index.html:/app/index.html
+      - ./vite.config.js:/app/vite.config.js
+      - ./server.js:/app/server.js
+      - ./public/uploads:/app/public/uploads
+      # Исключаем node_modules из монтирования
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    stdin_open: true
+    tty: true

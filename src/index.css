@@ -1,0 +1,55 @@
+/* VTBGroupUI Font - загрузка из GitHub */
+@font-face {
+  font-family: 'VTBGroupUI';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://raw.githubusercontent.com/AdmiralDS/fonts/main/VTBGroupUI-Regular.otf') format('opentype');
+  font-feature-settings: "tnum" on, "lnum" on, "cv03" on, "cv04" on;
+}
+
+@font-face {
+  font-family: 'VTBGroupUI';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://raw.githubusercontent.com/AdmiralDS/fonts/main/VTBGroupUI-Medium.otf') format('opentype');
+  font-feature-settings: "tnum" on, "lnum" on, "cv03" on, "cv04" on;
+}
+
+@font-face {
+  font-family: 'VTBGroupUI';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://raw.githubusercontent.com/AdmiralDS/fonts/main/VTBGroupUI-SemiBold.ttf') format('truetype');
+  font-feature-settings: "tnum" on, "lnum" on, "cv03" on, "cv04" on;
+}
+
+@font-face {
+  font-family: 'VTBGroupUI';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://raw.githubusercontent.com/AdmiralDS/fonts/main/VTBGroupUI-SemiBold.ttf') format('truetype');
+  font-feature-settings: "tnum" on, "lnum" on, "cv03" on, "cv04" on;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'VTBGroupUI', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}
