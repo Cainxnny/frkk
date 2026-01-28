@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import HomePage from './HomePage';
+import TasksPage from './TasksPage';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════
- * ВИТРИНА РКО - Точная реализация по макету Figma
+ * ВИТРИНА РКО / ГЛАВНАЯ / ЗАДАЧИ — переключение по иконкам (0 = Главная, 2 = Задачи, 5 = Витрина)
  * ═══════════════════════════════════════════════════════════════════════
  */
 
@@ -42,6 +44,7 @@ const DEFAULT_CLIENT_ICONS = {
 };
 
 export default function App() {
+  const [currentApp, setCurrentApp] = useState('showcase'); // 'home' | 'tasks' | 'showcase'
   const [activeTab, setActiveTab] = useState(0);
   const [activeNavItem, setActiveNavItem] = useState(5);
   
@@ -124,6 +127,30 @@ export default function App() {
 
   // Уникальные id для пунктов с иконками (createSafeId для кириллицы даёт пустую строку)
   const getMenuItemId = (item) => item.menuIconId ?? createSafeId(item.label);
+  // Меню разделов на Главной: 4 пункта без иконок
+  const homeNavMenuItems = [
+    { label: 'План на сегодня', active: true },
+    { label: 'Звонки' },
+    { label: 'Лиды РКО' },
+    { label: 'Мои клиенты' },
+  ];
+  // Меню разделов в приложении Задачи (по макету)
+  const tasksNavMenuItems = [
+    { label: 'Нераспределенные', active: true },
+    { label: 'Мои задачи' },
+    { label: 'ДСФ' },
+    { label: 'Задачи сотрудников' },
+    { label: 'Задачи клиентов моей ТП' },
+    { label: 'Задачи моих клиентов' },
+    { label: 'Задачи моей дирекции' },
+    { label: 'Наблюдаю' },
+    { label: 'Бизнес-википедия' },
+    { label: 'Настройки' },
+    { label: 'Задачи по адаптации' },
+    { label: 'Задачи по обучению' },
+    { label: 'Взятые в работу' },
+    { label: 'Обзвон базы' },
+  ];
   const navMenuItems = [
     { icon: '☆', label: 'Избранные продукты', menuIconId: 'favorites' },
     { icon: '🎁', label: 'Акции', menuIconId: 'promo' },
@@ -628,11 +655,16 @@ export default function App() {
           gap: '4px',
           fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif",
         }}>
-          {/* Top icons - 7 штук (icon-0 до icon-6) */}
-          {[0, 1, 2, 3, 4, 5, 6].map((idx) => (
+          {/* Top icons - 7 штук: icon-0 = Главная, icon-5 = Витрина, остальные — загрузка */}
+          {[0, 1, 2, 3, 4, 5, 6].map((idx) => {
+            const isHomeActive = idx === 0 && currentApp === 'home';
+            const isTasksActive = idx === 2 && currentApp === 'tasks';
+            const isShowcaseActive = idx === 5 && currentApp === 'showcase';
+            const isActive = isHomeActive || isTasksActive || isShowcaseActive;
+            return (
             <div 
               key={idx} 
-              className={`nav-icon${idx === 5 ? ' nav-icon-active' : ''}`}
+              className={`nav-icon${isActive ? ' nav-icon-active' : ''}`}
               style={{
                 width: '48px', 
                 height: '48px',
@@ -641,24 +673,29 @@ export default function App() {
                 justifyContent: 'center',
                 borderRadius: '100%', 
                 cursor: 'pointer',
-                background: idx === 5 ? 'rgb(37, 99, 235)' : 'transparent',
-                color: idx === 5 ? '#FFFFFF' : '#23262D',
+                background: isActive ? 'rgb(37, 99, 235)' : 'transparent',
+                color: isActive ? '#FFFFFF' : '#23262D',
                 fontSize: '20px',
                 transition: 'background 0.15s',
                 position: 'relative',
               }}
-              onClick={() => openUploadModal(null, `icon-${idx}`, 'icon')}
+              onClick={() => {
+                if (idx === 0) setCurrentApp('home');
+                else if (idx === 2) setCurrentApp('tasks');
+                else if (idx === 5) setCurrentApp('showcase');
+                else openUploadModal(null, `icon-${idx}`, 'icon');
+              }}
             >
               {uploadedIcons[`icon-${idx}`] ? (
                 <div 
-                  style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: idx === 5 ? '#FFFFFF' : '#23262D' }}
+                  style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isActive ? '#FFFFFF' : '#23262D' }}
                   dangerouslySetInnerHTML={{ __html: uploadedIcons[`icon-${idx}`] }}
                 />
               ) : (
-                <span style={{ color: idx === 5 ? '#FFFFFF' : '#23262D' }}>?</span>
+                <span style={{ color: isActive ? '#FFFFFF' : '#23262D' }}>?</span>
               )}
             </div>
-          ))}
+          );})}
           
           <div style={{ flex: 1 }} />
           
@@ -772,8 +809,9 @@ export default function App() {
         </nav>
 
         {/* ═══════════════════════════════════════════════════════════
-            FIXED: Right Sidebar - единый виджет
+            FIXED: Right Sidebar - только на Витрине
             ═══════════════════════════════════════════════════════════ */}
+        {currentApp === 'showcase' && (
         <aside className="ios-scroll" style={{
           position: 'fixed',
           top: '80px', 
@@ -1070,6 +1108,7 @@ export default function App() {
               </div>
           </div>
         </aside>
+        )}
 
         {/* ═══════════════════════════════════════════════════════════
             MAIN CONTENT AREA - белый прямоугольник со скруглениями
@@ -1079,7 +1118,7 @@ export default function App() {
           position: 'fixed',
           top: '80px',
           left: '96px',
-          right: '396px',
+          right: currentApp === 'showcase' ? '396px' : '24px', // Задачи и Главная — без сайдбара
           bottom: '72px',
           background: '#FFFFFF',
           borderRadius: '16px',
@@ -1099,14 +1138,14 @@ export default function App() {
             overflowY: 'auto',
             fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif",
           }}>
-            {navMenuItems.map((item, idx) => {
+            {(currentApp === 'home' ? homeNavMenuItems : currentApp === 'tasks' ? tasksNavMenuItems : navMenuItems).map((item, idx) => {
               if (item.divider) {
                 return null; // Убран divider
               }
               const isActive = item.active;
-              // Показывать счётчик для: Счета, РКО, Небанковские сервисы, Депозиты и остатки, Кредиты, ВЭД
+              // Показывать счётчик только на Витрине: Счета, РКО, Небанковские сервисы, Депозиты и остатки, Кредиты, ВЭД
               const menuItemsWithCounters = ['Счета', 'РКО', 'Небанковские сервисы', 'Депозиты и остатки', 'Кредиты', 'ВЭД'];
-              const showMenuCounter = showCounters && menuItemsWithCounters.includes(item.label);
+              const showMenuCounter = currentApp === 'showcase' && showCounters && menuItemsWithCounters.includes(item.label);
               return (
                 <div
                   key={idx}
@@ -1182,9 +1221,14 @@ export default function App() {
 
           {/* Content Area */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            
+            {currentApp === 'home' ? (
+              <HomePage />
+            ) : currentApp === 'tasks' ? (
+              <TasksPage />
+            ) : (
+            <>
             {/* ═══════════════════════════════════════════════════
-                FIXED (sticky): Title + Tabs
+                FIXED (sticky): Title + Tabs (Витрина)
                 ═══════════════════════════════════════════════════ */}
             <div style={{
               padding: '24px 24px 0',
@@ -1563,6 +1607,8 @@ export default function App() {
                 ))}
               </div>
             </div>
+            </>
+            )}
           </div>
         </main>
 
