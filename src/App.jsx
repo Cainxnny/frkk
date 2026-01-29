@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import HomePage from './HomePage';
 import TasksPage from './TasksPage';
+import ClientCardPage from './ClientCardPage';
+import ClientSearchPage from './ClientSearchPage';
 
 /**
  * ═══════════════════════════════════════════════════════════════════════
@@ -44,9 +46,18 @@ const DEFAULT_CLIENT_ICONS = {
 };
 
 export default function App() {
-  const [currentApp, setCurrentApp] = useState('showcase'); // 'home' | 'tasks' | 'showcase'
+  const [currentApp, setCurrentApp] = useState('showcase'); // 'home' | 'tasks' | 'showcase' | 'client-card'
+  const [homeSection, setHomeSection] = useState('plan'); // 'plan' | 'calls' | 'leads' | 'clients' — раздел на Главной
   const [activeTab, setActiveTab] = useState(0);
   const [activeNavItem, setActiveNavItem] = useState(5);
+  const [selectedProduct, setSelectedProduct] = useState(null); // { card, idx } — страница продукта в Витрине
+  const [selectedTask, setSelectedTask] = useState(null); // объект задачи — страница задачи в Задачах
+  const [taskDetailTab, setTaskDetailTab] = useState(0);
+  const [productDetailTab, setProductDetailTab] = useState(0);
+  const [productDetailTabsVisibleCount, setProductDetailTabsVisibleCount] = useState(8);
+  const [productDetailShowMoreMenu, setProductDetailShowMoreMenu] = useState(false);
+  const productDetailTabsContainerRef = useRef(null);
+  const productDetailTabsRefs = useRef([]);
   
   const tabs = [
     'Все', 'Расчеты в рублях', 'Кассовые операции', 'Инкассация', 
@@ -127,14 +138,23 @@ export default function App() {
 
   // Уникальные id для пунктов с иконками (createSafeId для кириллицы даёт пустую строку)
   const getMenuItemId = (item) => item.menuIconId ?? createSafeId(item.label);
-  // Меню разделов на Главной: 4 пункта без иконок
+  // Меню разделов на Главной: 4 пункта без иконок (active по homeSection)
   const homeNavMenuItems = [
-    { label: 'План на сегодня', active: true },
-    { label: 'Звонки' },
-    { label: 'Лиды РКО' },
-    { label: 'Мои клиенты' },
+    { label: 'План на сегодня', section: 'plan' },
+    { label: 'Звонки', section: 'calls' },
+    { label: 'Лиды РКО', section: 'leads' },
+    { label: 'Мои клиенты', section: 'clients' },
   ];
-  // Меню разделов в приложении Задачи (по макету)
+  // Меню разделов в Карточке клиента (подразделы вкладки «Основное»)
+  const clientCardNavMenuItems = [
+    { label: 'Реквизиты', active: true },
+    { label: 'Виды деятельности' },
+    { label: 'Страх. брокер' },
+    { label: 'Документы' },
+    { label: 'Совладельцы' },
+    { label: 'Исполнительные органы' },
+  ];
+  // Меню разделов в приложении Задачи (по макету). «Настройки» — внизу с иконкой Settings Outline.
   const tasksNavMenuItems = [
     { label: 'Нераспределенные', active: true },
     { label: 'Мои задачи' },
@@ -145,12 +165,19 @@ export default function App() {
     { label: 'Задачи моей дирекции' },
     { label: 'Наблюдаю' },
     { label: 'Бизнес-википедия' },
-    { label: 'Настройки' },
     { label: 'Задачи по адаптации' },
     { label: 'Задачи по обучению' },
     { label: 'Взятые в работу' },
     { label: 'Обзвон базы' },
+    { label: 'Настройки', settingsIcon: true },
   ];
+  // Иконка шестерёнки для раздела Настройки в Задачах (fill #717681 по макету)
+  const SettingsOutlineIcon = ({ color = '#717681' }) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      <path fillRule="evenodd" clipRule="evenodd" d="M15.9998 12C15.9998 14.2092 14.209 16 11.9998 16C9.79071 16 7.99985 14.2092 7.99985 12C7.99985 9.79087 9.79071 8.00001 11.9998 8.00001C14.209 8.00001 15.9998 9.79087 15.9998 12ZM14.6998 12C14.6998 13.4912 13.491 14.7 11.9998 14.7C10.5087 14.7 9.29985 13.4912 9.29985 12C9.29985 10.5088 10.5087 9.30001 11.9998 9.30001C13.491 9.30001 14.6998 10.5088 14.6998 12Z" fill={color}/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M10.9829 3.00494C10.0972 3.00494 9.34712 3.65809 9.22535 4.5354C9.07434 5.6234 7.93962 6.27853 6.92187 5.86531C6.10122 5.53211 5.16054 5.85512 4.71768 6.62217L3.76095 8.27928C3.32346 9.03703 3.50364 10.0006 4.18538 10.549C5.06698 11.2583 5.05247 12.6261 4.14737 13.3307C3.44849 13.8748 3.25788 14.851 3.70074 15.618L4.65747 17.2751C5.09496 18.0329 6.0195 18.3586 6.83534 18.0424C7.89037 17.6336 9.06765 18.33 9.22535 19.4662C9.34712 20.3435 10.0972 20.9966 10.9829 20.9966H12.8964C13.7713 20.9966 14.5157 20.3588 14.6498 19.4942C14.8322 18.3184 16.0549 17.6125 17.1644 18.0424C17.9802 18.3586 18.9047 18.0329 19.3422 17.2751L20.299 15.618C20.7418 14.851 20.5512 13.8748 19.8523 13.3307C18.9472 12.6261 18.9327 11.2583 19.8143 10.549C20.4961 10.0006 20.6762 9.03703 20.2387 8.27929L19.282 6.62217C18.8392 5.85512 17.8985 5.53211 17.0778 5.86531C16.015 6.29682 14.8232 5.62549 14.6498 4.50738C14.5157 3.64275 13.7713 3.00494 12.8964 3.00494H10.9829ZM10.513 4.71413C10.5456 4.47957 10.7461 4.30494 10.9829 4.30494L12.8964 4.30494C13.1303 4.30494 13.3293 4.47547 13.3652 4.70663C13.6695 6.66888 15.7415 7.81096 17.5669 7.06981C17.7863 6.98073 18.0378 7.06709 18.1562 7.27217L19.1129 8.92928C19.2299 9.13187 19.1817 9.38948 18.9994 9.53612C17.4523 10.7808 17.4992 13.1462 19.0537 14.3565C19.2406 14.502 19.2915 14.7629 19.1731 14.968L18.2164 16.6251C18.0994 16.8277 17.8522 16.9148 17.6341 16.8303C15.7506 16.1003 13.6748 17.2988 13.3652 19.295C13.3293 19.5261 13.1303 19.6966 12.8964 19.6966H10.9829C10.7461 19.6966 10.5456 19.522 10.513 19.2875C10.2421 17.336 8.21711 16.1127 6.36558 16.8303C6.14745 16.9148 5.90027 16.8277 5.78331 16.6251L4.82657 14.968C4.70817 14.7629 4.75913 14.502 4.94598 14.3565C6.50054 13.1462 6.54743 10.7808 5.00026 9.53612C4.81799 9.38948 4.76981 9.13187 4.88678 8.92928L5.84352 7.27217C5.96192 7.06709 6.21342 6.98073 6.43283 7.06981C8.23557 7.80175 10.2455 6.64132 10.513 4.71413Z" fill={color}/>
+    </svg>
+  );
   const navMenuItems = [
     { icon: '☆', label: 'Избранные продукты', menuIconId: 'favorites' },
     { icon: '🎁', label: 'Акции', menuIconId: 'promo' },
@@ -187,6 +214,19 @@ export default function App() {
     { title: 'Рублевые платежные поручения» ', bonus: 'Не начисляются', bonusGray: true },
     { title: 'Онлайн инкассация в АДМ»', bonus: '10-30 баллов' },
     { title: 'Заранее выданные акцепты', bonus: '20 баллов', badge: 'Новое' },
+  ];
+
+  const productDetailTabs = [
+    'Условия', 'Презентации', 'Документы', 'Скрипт', 'Процесс оформления', 'Вопросы и ответы',
+    { label: 'Обновления', badge: 1 },
+    { label: 'Акция', badge: 1 },
+  ];
+  const productConditions = [
+    { title: 'Стоимость пакета', items: [{ value: 'Бесплатно', detail: '3 месяца' }, { value: '2000 Р в мес.', detail: 'С 4-го месяца, если входящий оборот по счету от 10 000 Р' }] },
+    { title: 'Обслуживание счета', items: [{ value: 'Бесплатно', detail: 'При подключении ДБО' }] },
+    { title: 'Прием и исполнение платежных поручений на перевод денежных средств со счета клиента', items: [{ value: 'Бесплатно', detail: 'На счета в ВТБ' }, { value: '5 шт. / мес', detail: 'На счета в других банках' }, { value: 'Бесплатно', detail: 'В бюджетные организации РФ' }] },
+    { title: 'Переводы на счета физлиц', items: [{ value: 'от 1% от суммы', detail: 'Во все банки РФ' }, { value: 'Бесплатно', detail: 'Со счета ИП на свой счет ФЛ' }] },
+    { title: 'Прием и пересчет наличных денежных средств', items: [{ value: 'от 1% от суммы, мин. 375 Р', detail: null }] },
   ];
 
   // Сохранение в localStorage с обновлением state
@@ -310,11 +350,53 @@ export default function App() {
       if (showMoreMenu && !event.target.closest('[data-show-more-menu]')) {
         setShowMoreMenu(false);
       }
+      if (productDetailShowMoreMenu && !event.target.closest('[data-product-detail-show-more]')) {
+        setProductDetailShowMoreMenu(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showMoreMenu]);
+  }, [showMoreMenu, productDetailShowMoreMenu]);
+
+  // Расчёт видимых табов на странице продукта (как на Витрине с «Показать все»)
+  const productDetailTabsFlat = productDetailTabs.map(t => typeof t === 'string' ? t : t.label);
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const calculateVisibleTabs = () => {
+      if (!productDetailTabsContainerRef.current) return;
+      const container = productDetailTabsContainerRef.current;
+      const containerWidth = container.offsetWidth;
+      const moreButtonWidth = 130;
+      let usedWidth = 0;
+      let visibleCount = 0;
+      for (let i = 0; i < productDetailTabsFlat.length; i++) {
+        const el = productDetailTabsRefs.current[i];
+        if (!el) continue;
+        const tabWidth = el.offsetWidth || 0;
+        if (visibleCount > 0 && usedWidth + tabWidth + moreButtonWidth > containerWidth) break;
+        usedWidth += tabWidth;
+        visibleCount++;
+      }
+      setProductDetailTabsVisibleCount(visibleCount >= productDetailTabsFlat.length ? productDetailTabsFlat.length : Math.max(0, visibleCount));
+    };
+    const timeoutId = setTimeout(calculateVisibleTabs, 100);
+    window.addEventListener('resize', calculateVisibleTabs);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', calculateVisibleTabs);
+    };
+  }, [selectedProduct, productDetailTabsFlat.length]);
+
+  // Сброс страницы продукта при уходе с Витрины
+  useEffect(() => {
+    if (currentApp !== 'showcase') setSelectedProduct(null);
+  }, [currentApp]);
+
+  // Сброс страницы задачи при уходе с Задач
+  useEffect(() => {
+    if (currentApp !== 'tasks') setSelectedTask(null);
+  }, [currentApp]);
 
   return (
     <>
@@ -348,6 +430,21 @@ export default function App() {
         .ios-scroll {
           scrollbar-width: thin;
           scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+        }
+        /* Горизонтальный скроллбар таблицы продуктов — всегда занимает место, виден при ресайзе окна мышкой */
+        .products-table-scroll::-webkit-scrollbar:horizontal {
+          height: 8px;
+        }
+        .products-table-scroll::-webkit-scrollbar-track:horizontal {
+          background: #F3F4F6;
+          border-radius: 4px;
+        }
+        .products-table-scroll::-webkit-scrollbar-thumb:horizontal {
+          background: rgba(0, 0, 0, 0.25);
+          border-radius: 4px;
+        }
+        .products-table-scroll {
+          scrollbar-gutter: stable;
         }
         
         .nav-icon:hover {
@@ -419,6 +516,12 @@ export default function App() {
         @media (max-width: 1599px) {
           .cards-grid {
             grid-template-columns: repeat(3, 1fr);
+          }
+        }
+        
+        @media (min-width: 1800px) {
+          .task-detail-description {
+            max-width: 70%;
           }
         }
       `}</style>
@@ -631,8 +734,13 @@ export default function App() {
               }}
               onMouseEnter={(e) => e.currentTarget.style.background = '#0046E2'}
               onMouseLeave={(e) => e.currentTarget.style.background = '#2563EB'}
+              onClick={() => {
+                if (currentApp === 'client-card') setCurrentApp('client-search');
+                else if (currentApp === 'client-search') setCurrentApp('client-card');
+                else setCurrentApp('client-card');
+              }}
             >
-              Вернуться к клиенту
+              {currentApp === 'client-card' ? 'Завершить работу с клиентом' : currentApp === 'client-search' ? 'Начать работу с клиентом' : 'Вернуться к клиенту'}
             </button>
           </div>
         </header>
@@ -809,9 +917,9 @@ export default function App() {
         </nav>
 
         {/* ═══════════════════════════════════════════════════════════
-            FIXED: Right Sidebar - только на Витрине
+            FIXED: Right Sidebar - на Витрине и в Карточке клиента
             ═══════════════════════════════════════════════════════════ */}
-        {currentApp === 'showcase' && (
+        {(currentApp === 'showcase' || currentApp === 'client-card') && (
         <aside className="ios-scroll" style={{
           position: 'fixed',
           top: '80px', 
@@ -1118,7 +1226,7 @@ export default function App() {
           position: 'fixed',
           top: '80px',
           left: '96px',
-          right: currentApp === 'showcase' ? '396px' : '24px', // Задачи и Главная — без сайдбара
+          right: (currentApp === 'showcase' || currentApp === 'client-card') ? '396px' : '24px', // Задачи, Главная, поиск клиента — без сайдбара
           bottom: '72px',
           background: '#FFFFFF',
           borderRadius: '16px',
@@ -1130,102 +1238,405 @@ export default function App() {
           
           {/* ═══════════════════════════════════════════════════════
               SCROLLABLE: Navigation Menu - ВНУТРИ белого блока
+              (для Карточки клиента меню размещено внутри блока под табами)
               ═══════════════════════════════════════════════════════ */}
-          <div className="ios-scroll" style={{
-            width: '256px',
-            flexShrink: 0,
-            padding: '24px 16px',
-            overflowY: 'auto',
-            fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif",
-          }}>
-            {(currentApp === 'home' ? homeNavMenuItems : currentApp === 'tasks' ? tasksNavMenuItems : navMenuItems).map((item, idx) => {
-              if (item.divider) {
-                return null; // Убран divider
-              }
-              const isActive = item.active;
-              // Показывать счётчик только на Витрине: Счета, РКО, Небанковские сервисы, Депозиты и остатки, Кредиты, ВЭД
-              const menuItemsWithCounters = ['Счета', 'РКО', 'Небанковские сервисы', 'Депозиты и остатки', 'Кредиты', 'ВЭД'];
-              const showMenuCounter = currentApp === 'showcase' && showCounters && menuItemsWithCounters.includes(item.label);
-              return (
-                <div
-                  key={idx}
-                  className="menu-item"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '0 16px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    background: isActive ? '#F3F4F6' : 'transparent',
-                    color: isActive ? '#2563EB' : '#4F525A',
-                    fontWeight: '400',
-                    fontSize: '14px',
-                    lineHeight: '20px',
-                    transition: 'background 0.15s',
-                    marginBottom: '4px',
-                    fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif",
-                    position: 'relative',
-                  }}
-                >
-                  {item.icon && (
-                    <span 
-                      style={{ 
-                        color: isActive ? '#2563EB' : '#9CA3AF', 
-                        fontSize: '16px',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
+          {currentApp !== 'client-card' && currentApp !== 'client-search' && (
+            <div style={{
+              width: '256px',
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+              fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif",
+            }}>
+              {currentApp === 'tasks' ? (
+                <>
+                  <div className="ios-scroll" style={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflowY: 'auto',
+                    padding: '24px 16px 16px',
+                    paddingBottom: '8px',
+                  }}>
+                    {tasksNavMenuItems.filter((item) => !item.settingsIcon).map((item, idx) => {
+                      const isActive = !!item.active;
+                      return (
+                        <div
+                          key={idx}
+                          className="menu-item"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '0 16px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            background: isActive ? '#F3F4F6' : 'transparent',
+                            color: isActive ? '#2563EB' : '#4F525A',
+                            fontWeight: '400',
+                            fontSize: '14px',
+                            lineHeight: '20px',
+                            transition: 'background 0.15s',
+                            marginBottom: '4px',
+                            fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif",
+                          }}
+                        >
+                          <span style={{ flex: 1 }}>{item.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{
+                    flexShrink: 0,
+                    padding: '8px 16px 24px',
+                    background: '#FFFFFF',
+                  }}>
+                    <div
+                      className="menu-item"
+                      style={{
+                        display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '24px',
-                        height: '24px',
-                        flexShrink: 0,
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const menuItemId = getMenuItemId(item);
-                        openUploadModal(null, null, 'menu-icon', menuItemId, null);
+                        gap: '12px',
+                        padding: '0 16px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        background: 'transparent',
+                        color: '#4F525A',
+                        fontWeight: '400',
+                        fontSize: '14px',
+                        lineHeight: '20px',
+                        transition: 'background 0.15s',
+                        fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif",
                       }}
                     >
-                      {uploadedMenuIcons[getMenuItemId(item)] ? (
-                        <span 
-                          style={{ width: '24px', height: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                          dangerouslySetInnerHTML={{ __html: uploadedMenuIcons[getMenuItemId(item)] }}
-                        />
-                      ) : (
-                        item.icon
-                      )}
-                    </span>
-                  )}
-                  <span style={{ flex: 1 }}>{item.label}</span>
-                  {showMenuCounter && (
-                    <span style={{
-                      width: '16px',
-                      height: '16px',
-                      background: '#EF4444',
-                      borderRadius: '50%',
-                      fontSize: '10px',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: '500',
-                      flexShrink: 0,
-                    }}>5</span>
-                  )}
+                      <span style={{ width: '24px', height: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <SettingsOutlineIcon color="#4F525A" />
+                      </span>
+                      <span style={{ flex: 1 }}>Настройки</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="ios-scroll" style={{
+                  flex: 1,
+                  minHeight: 0,
+                  overflowY: 'auto',
+                  padding: '24px 16px',
+                  fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif",
+                }}>
+                  {(currentApp === 'home' ? homeNavMenuItems : navMenuItems).map((item, idx) => {
+                    if (item.divider) {
+                      return null;
+                    }
+                    const isActive = currentApp === 'home' && item.section
+                      ? homeSection === item.section
+                      : !!item.active;
+                    const menuItemsWithCounters = ['Счета', 'РКО', 'Небанковские сервисы', 'Депозиты и остатки', 'Кредиты', 'ВЭД'];
+                    const showMenuCounter = currentApp === 'showcase' && showCounters && menuItemsWithCounters.includes(item.label);
+                    return (
+                      <div
+                        key={idx}
+                        className="menu-item"
+                        onClick={currentApp === 'home' && item.section ? () => setHomeSection(item.section) : undefined}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '0 16px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          background: isActive ? '#F3F4F6' : 'transparent',
+                          color: isActive ? '#2563EB' : '#4F525A',
+                          fontWeight: '400',
+                          fontSize: '14px',
+                          lineHeight: '20px',
+                          transition: 'background 0.15s',
+                          marginBottom: '4px',
+                          fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif",
+                          position: 'relative',
+                        }}
+                      >
+                        {item.icon && (
+                          <span 
+                            style={{ 
+                              color: isActive ? '#2563EB' : '#9CA3AF', 
+                              fontSize: '16px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '24px',
+                              height: '24px',
+                              flexShrink: 0,
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const menuItemId = getMenuItemId(item);
+                              openUploadModal(null, null, 'menu-icon', menuItemId, null);
+                            }}
+                          >
+                            {uploadedMenuIcons[getMenuItemId(item)] ? (
+                              <span 
+                                style={{ width: '24px', height: '24px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                dangerouslySetInnerHTML={{ __html: uploadedMenuIcons[getMenuItemId(item)] }}
+                              />
+                            ) : (
+                              item.icon
+                            )}
+                          </span>
+                        )}
+                        <span style={{ flex: 1 }}>{item.label}</span>
+                        {showMenuCounter && (
+                          <span style={{
+                            width: '16px',
+                            height: '16px',
+                            background: '#EF4444',
+                            borderRadius: '50%',
+                            fontSize: '10px',
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: '500',
+                            flexShrink: 0,
+                          }}>5</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Content Area */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {currentApp === 'home' ? (
-              <HomePage />
+              <HomePage homeSection={homeSection} />
             ) : currentApp === 'tasks' ? (
-              <TasksPage />
+              selectedTask ? (
+                /* Страница задачи: назад, две колонки — контент + сайдбар */
+                <div className="ios-scroll" style={{ flex: 1, overflowY: 'auto', padding: '24px', minHeight: 0 }}>
+                  <a
+                    href="#"
+                    onClick={(e) => { e.preventDefault(); setSelectedTask(null); }}
+                    style={{ fontSize: '14px', color: '#2563EB', textDecoration: 'none', marginBottom: '16px', display: 'inline-block', fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif" }}
+                  >
+                    &lt; Вернуться
+                  </a>
+                  <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+                    {/* Левая колонка — контент */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#111827', marginBottom: '12px', fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif" }}>
+                        {selectedTask.name}
+                      </h2>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 400,
+                          background: (() => { const s = { 'Новая': '#E5F5EC', 'В работе': '#E5F0FF', 'На проверке': '#FEF5D7', 'Завершена': '#D1FAE5', 'Отменена': '#FFE5E5' }[selectedTask.status] || '#F3F4F6'; return s; })(),
+                          color: (() => { const s = { 'Новая': '#0F766E', 'В работе': '#1D4ED8', 'На проверке': '#B45309', 'Завершена': '#047857', 'Отменена': '#B91C1C' }[selectedTask.status] || '#4F525A'; return s; })(),
+                        }}>
+                          {selectedTask.status}
+                        </span>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 400,
+                          background: '#F3F4F6',
+                          color: '#4F525A',
+                        }}>
+                          {selectedTask.type}
+                        </span>
+                      </div>
+                      <div className="task-detail-description" style={{ fontSize: '14px', color: '#4F525A', lineHeight: '20px', marginBottom: '24px', fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif" }}>
+                        Коллеги, добрый день! Информируем о запуске регулярной маркетинговой кампании Удержание: пакет услуг «На старте». Цель кампании: удержание клиентов с заканчивающимся ПУ «На Все включено» в Банке и перевод их на другие пакеты посредством индивидуальных акционных предложений в зависимости от ЧОД. Сегмент кампании: состоит из действующих клиентов Банка ВТБ, у которых в текущем месяце заканчивается действие ПУ «На Все включено». ТРМ: КМ ВС, КМ СТС, МОК.
+                      </div>
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
+                        <button
+                          type="button"
+                          style={{
+                            background: '#2563EB',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            padding: '10px 16px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#0046E2'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = '#2563EB'; }}
+                        >
+                          В работу
+                        </button>
+                        <button
+                          type="button"
+                          style={{
+                            padding: '0 16px',
+                            background: '#EDF5FF',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#2563EB',
+                            fontWeight: '500',
+                            fontSize: '14px',
+                            borderRadius: '8px',
+                            transition: 'background 0.15s',
+                            height: '40px',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#DDE9FF'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = '#EDF5FF'; }}
+                        >
+                          Делегировать
+                        </button>
+                        <button
+                          type="button"
+                          style={{
+                            padding: '0 16px',
+                            background: '#EDF5FF',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#2563EB',
+                            fontWeight: '500',
+                            fontSize: '14px',
+                            borderRadius: '8px',
+                            transition: 'background 0.15s',
+                            height: '40px',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#DDE9FF'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = '#EDF5FF'; }}
+                        >
+                          Выполнить
+                        </button>
+                      </div>
+                      <div style={{ marginBottom: '24px', padding: '12px 16px', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '12px', width: 'fit-content' }}>
+                        <span style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#10B981', borderRadius: '4px' }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        </span>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>База клиентов</div>
+                          <div style={{ fontSize: '12px', color: '#6B7280' }}>XLS • 1,5 MB</div>
+                        </div>
+                      </div>
+                      <div style={{ borderBottom: '1px solid #D5D8DE' }}>
+                        {['Комментарии', 'Файлы', 'Связь', 'История'].map((label, idx) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={() => setTaskDetailTab(idx)}
+                            style={{
+                              padding: '12px 16px',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: 400,
+                              color: taskDetailTab === idx ? '#2563EB' : '#6B7280',
+                              borderBottom: taskDetailTab === idx ? '2px solid #2563EB' : '2px solid transparent',
+                              marginBottom: '-1px',
+                              transition: 'color 0.15s',
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      {taskDetailTab === 0 && (
+                        <div style={{ paddingTop: '16px', fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif" }}>
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px' }}>21 Января</div>
+                          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#E5E7EB', flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>Михайлов Алексей Юрьевич</div>
+                              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>Заместитель управляющего РОО БГ</div>
+                              <div style={{ fontSize: '14px', color: '#374151' }}>Направляю на проверку</div>
+                              <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '4px' }}>11:46</div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#DBEAFE', flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>Зайцева Елена Михайлова</div>
+                              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>Управляющий РОО БГ</div>
+                              <div style={{ fontSize: '14px', color: '#374151' }}>Взяла в работу!</div>
+                              <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '4px' }}>12:15</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {/* Правая колонка — сайдбар */}
+                    <div style={{ width: '356px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ padding: '16px', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '16px' }}>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333', marginBottom: '12px' }}>Даты</div>
+                        <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Дата создания:</div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333', marginBottom: '12px' }}>Пт, 29 марта 2022</div>
+                        <div style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>Срок исполнения:</div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>Пн, 13 апреля 2022</div>
+                      </div>
+                      <div style={{ padding: '16px', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '16px' }}>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333', marginBottom: '12px' }}>Источник</div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>Плановое обновление сведений</div>
+                      </div>
+                      <div style={{ padding: '16px', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '16px' }}>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333', marginBottom: '12px' }}>Клиент</div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333', marginBottom: '4px' }}>{selectedTask.client}</div>
+                        <div style={{ fontSize: '13px', color: '#666' }}>ИНН 729534766</div>
+                      </div>
+                      <div style={{ padding: '16px', background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '16px' }}>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333', marginBottom: '12px' }}>Участники задачи</div>
+                        <div style={{ marginBottom: '12px' }}>
+                          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Автор:</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#DBEAFE', flexShrink: 0 }} />
+                            <div>
+                              <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>Зайцева Елена Михайлова</div>
+                              <div style={{ fontSize: '12px', color: '#6B7280' }}>Управляющий РОО БГ</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: '12px' }}>
+                          <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>Исполнитель:</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#E5E7EB', flexShrink: 0 }} />
+                            <div>
+                              <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>Михайлов Алексей Юрьевич</div>
+                              <div style={{ fontSize: '12px', color: '#6B7280' }}>Заместитель управляющего РОО БГ</div>
+                            </div>
+                          </div>
+                        </div>
+                        <a href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: '14px', color: '#2563EB', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <span>+</span> Добавить наблюдателя
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <TasksPage onTaskSelect={(task) => { setSelectedTask(task); setTaskDetailTab(0); }} />
+              )
+            ) : currentApp === 'client-card' ? (
+              <ClientCardPage />
+            ) : currentApp === 'client-search' ? (
+              <ClientSearchPage />
             ) : (
+            <>
+            {!selectedProduct && (
             <>
             {/* ═══════════════════════════════════════════════════
                 FIXED (sticky): Title + Tabs (Витрина)
@@ -1384,20 +1795,258 @@ export default function App() {
                 )}
               </div>
             </div>
+            </>
+            )}
 
             {/* ═══════════════════════════════════════════════════
-                SCROLLABLE: Cards Grid
+                SCROLLABLE: Cards Grid или страница продукта
                 ═══════════════════════════════════════════════════ */}
             <div className="ios-scroll" style={{
               flex: 1,
               overflowY: 'auto',
               padding: '24px',
             }}>
+              {selectedProduct ? (
+                /* Страница продукта в Витрине: фиксированные шапка и табы, скролл только под табами */
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%', overflow: 'hidden' }}>
+                    <div style={{ flexShrink: 0 }}>
+                    <a
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); setSelectedProduct(null); }}
+                      style={{ fontSize: '14px', color: '#2563EB', textDecoration: 'none', marginBottom: '16px', display: 'inline-block' }}
+                    >
+                      &lt; Вернуться
+                    </a>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '24px', marginBottom: '24px', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                          <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#111827', margin: 0 }}>{selectedProduct.card.title}</h2>
+                          {selectedProduct.card.badge && (
+                            <span style={{ background: '#EF4444', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', fontWeight: 400 }}>{selectedProduct.card.badge}</span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#4F525A', marginBottom: '8px' }}>2000 Р в мес.</div>
+                        <div style={{ fontSize: '14px', color: '#9333EA', fontWeight: '600', marginBottom: '16px' }}>+ {selectedProduct.card.bonus}</div>
+                        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            style={{
+                              background: '#2563EB',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              padding: '10px 16px',
+                              fontWeight: '500',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              transition: 'background 0.15s',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#0046E2'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = '#2563EB'; }}
+                          >
+                            Оформить
+                          </button>
+                          <button
+                            type="button"
+                            style={{
+                              padding: '0 12px',
+                              background: '#EDF5FF',
+                              border: 'none',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '8px',
+                              color: '#2563EB',
+                              fontWeight: '500',
+                              fontSize: '14px',
+                              borderRadius: '8px',
+                              transition: 'background 0.15s',
+                              height: '40px',
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#DDE9FF'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = '#EDF5FF'; }}
+                          >
+                            Обслужить
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ width: '120px', height: '120px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        {uploadedImages[getCardId(selectedProduct.card, selectedProduct.idx)] ? (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} dangerouslySetInnerHTML={{ __html: uploadedImages[getCardId(selectedProduct.card, selectedProduct.idx)] }} />
+                        ) : (
+                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '16px', position: 'relative' }}>
+                      <div
+                        ref={productDetailTabsContainerRef}
+                        style={{
+                          display: 'flex',
+                          borderBottom: '1px solid #D5D8DE',
+                          position: 'relative',
+                        }}
+                      >
+                        {productDetailTabs.map((tab, idx) => {
+                          const label = typeof tab === 'string' ? tab : tab.label;
+                          const badge = typeof tab === 'object' ? tab.badge : null;
+                          const isVisible = idx < productDetailTabsVisibleCount;
+                          return (
+                            <button
+                              key={label}
+                              type="button"
+                              ref={el => productDetailTabsRefs.current[idx] = el}
+                              onClick={() => {
+                                setProductDetailTab(idx);
+                                setProductDetailShowMoreMenu(false);
+                              }}
+                              style={{
+                                padding: '12px 16px',
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: 400,
+                                whiteSpace: 'nowrap',
+                                color: productDetailTab === idx ? '#2563EB' : '#6B7280',
+                                borderBottom: productDetailTab === idx ? '2px solid #2563EB' : '2px solid transparent',
+                                marginBottom: '-1px',
+                                transition: 'color 0.15s',
+                                visibility: isVisible ? 'visible' : 'hidden',
+                                position: isVisible ? 'static' : 'absolute',
+                                opacity: isVisible ? 1 : 0,
+                                pointerEvents: isVisible ? 'auto' : 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                              }}
+                            >
+                              {label}
+                              {badge != null && <span style={{ background: '#EF4444', color: '#FFF', borderRadius: '10px', padding: '0 6px', fontSize: '11px' }}>{badge}</span>}
+                            </button>
+                          );
+                        })}
+                        {productDetailTabsVisibleCount < productDetailTabsFlat.length && (
+                          <div style={{ position: 'relative', marginLeft: 'auto' }} data-product-detail-show-more>
+                            <button
+                              type="button"
+                              onClick={() => setProductDetailShowMoreMenu(!productDetailShowMoreMenu)}
+                              style={{
+                                padding: '12px 16px',
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                fontWeight: '500',
+                                whiteSpace: 'nowrap',
+                                fontSize: '14px',
+                                color: '#2563EB',
+                                borderBottom: productDetailShowMoreMenu ? '2px solid #2563EB' : '2px solid transparent',
+                                marginBottom: '-1px',
+                                transition: 'color 0.15s',
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = '#0046E2'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = '#2563EB'; }}
+                            >
+                              Показать все
+                            </button>
+                            {productDetailShowMoreMenu && (
+                              <div
+                                data-product-detail-show-more
+                                style={{
+                                  position: 'absolute',
+                                  top: '100%',
+                                  right: 0,
+                                  background: '#FFFFFF',
+                                  border: '1px solid #E5E7EB',
+                                  borderRadius: '8px',
+                                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                                  zIndex: 1000,
+                                  minWidth: '200px',
+                                  marginTop: '4px',
+                                }}
+                              >
+                                {productDetailTabs.slice(productDetailTabsVisibleCount).map((tab, idx) => {
+                                  const actualIdx = productDetailTabsVisibleCount + idx;
+                                  const label = typeof tab === 'string' ? tab : tab.label;
+                                  const badge = typeof tab === 'object' ? tab.badge : null;
+                                  return (
+                                    <button
+                                      key={label}
+                                      type="button"
+                                      onClick={() => {
+                                        setProductDetailTab(actualIdx);
+                                        setProductDetailShowMoreMenu(false);
+                                      }}
+                                      style={{
+                                        width: '100%',
+                                        padding: '12px 16px',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        cursor: 'pointer',
+                                        fontWeight: '400',
+                                        textAlign: 'left',
+                                        fontSize: '14px',
+                                        color: productDetailTab === actualIdx ? '#2563EB' : '#374151',
+                                        borderBottom: idx < productDetailTabs.slice(productDetailTabsVisibleCount).length - 1 ? '1px solid #F3F4F6' : 'none',
+                                        transition: 'background 0.15s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                      }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                      {label}
+                                      {badge != null && <span style={{ background: '#EF4444', color: '#FFF', borderRadius: '10px', padding: '0 6px', fontSize: '11px' }}>{badge}</span>}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    </div>
+                    <div className="ios-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                    {productDetailTab === 0 && (
+                      <div style={{ fontFamily: "'VTBGroupUI', -apple-system, BlinkMacSystemFont, sans-serif" }}>
+                        {productConditions.map((block, i) => (
+                          <div key={i}>
+                            {i > 0 && (
+                              <div style={{ borderTop: '1px solid #D5D8DE', margin: '0' }} />
+                            )}
+                            <div style={{ display: 'flex', flexDirection: 'row', gap: '24px', alignItems: 'flex-start', padding: '20px 0', minWidth: 0 }}>
+                              <div style={{ fontSize: '16px', fontWeight: 400, color: '#333333', flex: '1 1 50%', minWidth: 0, lineHeight: '24px' }}>{block.title}</div>
+                              <div style={{ flex: '1 1 50%', minWidth: 0 }}>
+                                {block.items.map((item, j) => (
+                                  <div key={j} style={{ marginBottom: j < block.items.length - 1 ? '16px' : 0 }}>
+                                    <div style={{ fontSize: '16px', fontWeight: 600, color: '#333333', lineHeight: '24px' }}>{item.value}</div>
+                                    {item.detail && (
+                                      <div style={{ fontSize: '13px', fontWeight: 400, color: '#666666', lineHeight: '20px', marginTop: '2px' }}>{item.detail}</div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    </div>
+                </div>
+              ) : (
               <div className="cards-grid">
                 {(activeTab === 4 ? cards.slice(0, 4) : cards).map((card, idx) => (
                   <div 
                     key={idx} 
                     className="card"
+                    onClick={() => setSelectedProduct({ card, idx })}
                     style={{
                       background: '#FFFFFF',
                       borderRadius: '16px',
@@ -1431,7 +2080,8 @@ export default function App() {
                         cursor: 'pointer',
                         flexShrink: 0,
                       }}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const cardId = getCardId(card, idx);
                         openUploadModal(cardId, null, 'image');
                       }}
@@ -1567,7 +2217,7 @@ export default function App() {
                         }}>
                           ✦ {card.bonus}
                         </span>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
                           {/* Star Outline - AdmiralDS */}
                           <svg 
                             viewBox="0 0 24 24" 
@@ -1606,6 +2256,7 @@ export default function App() {
                   </div>
                 ))}
               </div>
+              )}
             </div>
             </>
             )}

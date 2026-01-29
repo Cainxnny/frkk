@@ -80,3 +80,31 @@ frkk/
 ## Порты
 
 - **3000** - основной порт для разработки (Vite dev server)
+
+## Совместная работа (Git + GitHub)
+
+### Первая настройка (один раз)
+
+1. Создайте репозиторий на GitHub: https://github.com/new  
+   - Имя: например `frkk`  
+   - Не добавляйте README, .gitignore, license — они уже есть в проекте.
+
+2. Подключите удалённый репозиторий и отправьте код:
+```bash
+git remote add origin https://github.com/ВАШ_ЛОГИН/frkk.git
+git push -u origin main
+```
+
+3. Коллега клонирует репозиторий:
+```bash
+git clone https://github.com/ВАШ_ЛОГИН/frkk.git
+cd frkk
+npm install
+npm run dev
+```
+
+### Ежедневный workflow
+
+- **Получить изменения:** `git pull`
+- **Сохранить изменения:** `git add .` → `git commit -m "описание"` → `git push`
+- **Создать ветку для фичи:** `git checkout -b feature/название` → работа → `git push -u origin feature/название`, затем Pull Request на GitHub
