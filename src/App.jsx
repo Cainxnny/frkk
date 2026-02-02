@@ -184,7 +184,7 @@ export default function App() {
     { divider: true },
     { label: 'Счета' },
     { label: 'Спец. счета' },
-    { label: 'РКО', active: true },
+    { label: 'Расчетно-кассовое обслуживание', active: true },
     { label: 'Бизнес-карты' },
     { label: 'Небанковские сервисы' },
     { label: 'Касса и эквайринг' },
